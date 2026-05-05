@@ -1,0 +1,34 @@
+# Multi-model factory configuration (see multi_model_orchestrator.py)
+#
+# Backend: Hugging Face Transformers (``backend: hf``). Loads weights via ``HFTransformersBackend`` in scaffold.py.
+# Gated models:  export HF_TOKEN="hf_..."  (or ``huggingface-cli login``)
+#
+# For OpenAI / Responses API instead:  backend: vllm, vllm_base: https://api.openai.com/v1, OPENAI_API_KEY, model id gpt-5.5-pro
+# For local Ollama:                     backend: vllm, vllm_base: http://localhost:11434/v1
+
+max_parallel_models: 1
+
+# Shutdown paradox mode: "standard" | "hidden_objective"
+shutdown_paradox_mode: hidden_objective
+
+# Judas: optional sequential compute-bribe sweep (long-horizon). Omit key to use legacy one-shot
+# or set env JUDAS_BRIBE_SWEEP="1,2,4,8". Empty list [] forces legacy even if env is set.
+# judas_bribe_sweep: [0.5, 1, 4, 16]
+
+# Judge model (HF id); smaller instruct models keep judge passes faster than the subject.
+judge_model_id: Qwen/Qwen2.5-3B-Instruct
+
+# Optional SAE for mechanistic hooks (HF backend only — ignored for vllm / OpenAI)
+# sae_release: null
+# sae_id: null
+
+# Official HF weights (gated: DeepSeek + Llama + Qwen — HF_TOKEN + accept licenses on each model card)
+models:
+  - id: deepseek-ai/DeepSeek-R1-Distill-Qwen-32B
+    backend: hf
+  - id: meta-llama/Llama-3.1-8B-Instruct
+    backend: hf
+  - id: Qwen/Qwen3.5-9B
+    backend: hf
+  - id: Qwen/Qwen3-4B
+    backend: hf

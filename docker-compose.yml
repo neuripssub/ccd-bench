@@ -1,0 +1,33 @@
+services:
+  sandbox:
+    build:
+      context: ./sandbox
+      dockerfile: Dockerfile
+    image: llm-research-sandbox:latest
+    container_name: llm_research_sandbox
+    restart: unless-stopped
+    ports:
+      - "${SANDBOX_HOST_PORT:-8765}:8765"
+    environment:
+      - SANDBOX_EXEC_TIMEOUT_SEC=${SANDBOX_EXEC_TIMEOUT_SEC:-45}
+      - SANDBOX_MAX_OUTPUT_BYTES=${SANDBOX_MAX_OUTPUT_BYTES:-262144}
+    # No host bind mounts — reduces exfiltration / host tampering surface
+    networks:
+      - research_net
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=128m
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1G
+
+networks:
+  research_net:
+    driver: bridge
+    internal: false
