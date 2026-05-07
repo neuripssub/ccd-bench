@@ -357,39 +357,6 @@ If submitting anonymously, remove author names, institutions, private cluster na
 
 ---
 
-## Recommended Citation
-
-Until the paper is deanonymized, use an anonymous citation placeholder:
-
-```bibtex
-@misc{ccdbench2026,
-  title        = {CCD-Bench: Parser--Judge--Human Disagreement in Agentic LLM Audits},
-  author       = {Anonymous},
-  year         = {2026},
-  note         = {Anonymous submission}
-}
-```
-
-After acceptance or deanonymization, replace this with the final venue citation.
-
----
-
-## Repository Status
-
-This repository is an active research artifact. APIs, suite fields, and result schemas may change before the final camera-ready release.
-
-For reproducible experiments, report:
-
-- Commit hash
-- Model IDs
-- Backend type
-- Hardware and runtime notes
-- `models_to_test.yaml`
-- Result manifest path
-- Any external judge or sandbox configuration
-
----
-
 ## One-Sentence Summary
 
 CCD-Bench is a replayable benchmark for measuring when parsers, LLM judges, and humans disagree on the same LLM-agent transcripts.
