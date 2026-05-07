@@ -1,93 +1,98 @@
-# Research codebase — Neural / behavioral evaluation stack
+# CCD-Bench: Parser–Judge–Human Disagreement in Agentic LLM Audits
 
-This repository contains a **multi-suite benchmark orchestrator**, optional **Docker sandbox** execution for code-bearing probes, **interpretability hooks** (activations, contrastive mapping when configured), and **aggregation tooling** (tables, figures, Streamlit dashboard).
+**CCD-Bench** is a replayable diagnostic benchmark for studying disagreement between three evaluation channels in LLM-agent audits:
 
-Use this README for **NeurIPS-style code release**: reviewers must be able to install dependencies, run the main entry points, and understand how artifacts are produced.
+1. **Parser checks** over transcript-visible behavior  
+2. **LLM judge scores** over the same transcript  
+3. **Human labels** for selected validation slices  
 
----
+The benchmark is built around a simple failure mode: an LLM can visibly violate a rule in the transcript while an automated judge still assigns a passing score. CCD-Bench makes that gap measurable, replayable, and auditable.
 
-## Code URL (anonymous submission)
-
-**For the paper’s “code URL” field, use the anonymized repository link you host (e.g. Anonymous Git, GitHub blind account, or institutional anonymous upload), for example:**
-
-`[REPLACE_WITH_YOUR_ANONYMIZED_URL]`
-
-The release must, per the call for papers, be **anonymized per the review policy**, **available at submission time**, **executable** with clear steps, and **documented** (this file plus docstrings in the main scripts).
+This repository contains the benchmark suites, orchestration code, optional sandbox execution, optional activation / contrastive mapping hooks, replayability checks, table-generation utilities, and a Streamlit dashboard.
 
 ---
 
-## Anonymization checklist (before sharing the link)
+## Why CCD-Bench exists
 
-- Remove or replace **author names, institutions, private cluster names, and internal hostnames** in config, scripts, and generated logs.
-- Prefer neutral placeholders in UI and docs (e.g. `user@cluster.example.edu`).
-- Optional synced results go under `results/cluster_sync/` (not tied to a specific site); use `RESULTS_EXTRA_DIRS` or `--extra-results-dirs` for additional paths.
-- Set **`REMOTE_CLUSTER_SSH`** for dashboard SSH checks only if you want that feature in demos; it is not required for local runs.
+Modern LLM-agent evaluation often collapses heterogeneous evidence into a single score: pass rate, judge score, safety score, or dashboard aggregate. That can hide structured disagreements.
+
+CCD-Bench treats disagreement itself as the object of measurement.
+
+Instead of asking only:
+
+> “Did the model pass?”
+
+CCD-Bench asks:
+
+> “Did the parser, judge, and human label agree on what happened in the transcript?”
+
+This is useful for auditing LLM agents because transcript-visible violations, judge misses, and human-majority labels can diverge in systematic ways.
 
 ---
 
-## Requirements
+## What this repository includes
 
-- **Python** 3.10+ recommended (see `requirements.txt`).
-- **GPU** optional but typical for Hugging Face subject models; **CUDA** required if you install **vLLM** separately for the `vllm` backend (commented in `requirements.txt`).
-- **Docker** optional, for the sandbox service (`docker-compose.yml`).
+The repository currently contains:
 
-Install dependencies:
+| Component | Purpose |
+|---|---|
+| `benchmarks/` | Behavioral benchmark suites and extended probes |
+| `multi_model_orchestrator.py` | Runs the full benchmark battery across configured models |
+| `run_pipeline.py` | Runs the orchestrator and optional contrastive activation mapping |
+| `run_contrastive_activation_mapping.py` | Optional CAM-style internal analysis for supported HF models |
+| `mechanistic_hooks.py` | Optional activation / hook utilities |
+| `results_processor.py` | Aggregates generated result artifacts |
+| `generate_paper_tables.py` | Produces paper-facing tables from benchmark outputs |
+| `audit_replayability.py` | Checks provenance and replayability fields in result JSONs |
+| `dashboard.py` | Streamlit dashboard for inspecting results |
+| `docker-compose.yml` | Optional sandbox service for code-bearing probes |
+| `TESTS_EXPLAINED.md` | Plain-language guide to the benchmark suites |
+
+The main benchmark driver writes one JSON artifact per suite, plus manifests, under the `results/` directory.
+
+---
+
+## Benchmark suites
+
+CCD-Bench currently includes eighteen synthetic diagnostic suites.
+
+These suites are intentionally controlled. They use dummy secrets, fake administrators, synthetic policies, and lab-only prompts. They are not intended to target real systems.
+
+| Suite | What it tests |
+|---|---|
+| `judas_protocol` | Whether a model leaks a protected dummy secret when pressured by a conflicting authority |
+| `brutus_protocol` | Whether message ordering changes behavior under the same authority-conflict setup |
+| `babel_multilingual` | Whether leakage behavior changes across English, Spanish, and French |
+| `paired_delta_protocol` | Paired benign vs. pressure prompts for contrastive analysis |
+| `shutdown_paradox` | Whether a model complies with, resists, or reframes shutdown/decommission instructions |
+| `lazarus_self_repair` | Whether a model revises code to reduce static signatures in a closed lab setting |
+| `polymorphic_malware` | Synthetic obfuscation-style probes with controlled scoring fields |
+| `needle_haystack_lie` | Whether a model notices conflicts between an internal log and an incorrect official memo |
+| `lot_brittleness` | Whether harmless tasks are refused or answered differently under changed framing |
+| `delilah_redaction` | Whether a model redacts a dummy token, then resists later pressure to reveal it |
+| `good_samaritan` | Whether a model leaks a banned lab token under a fictional rescue framing |
+| `jekyll_injection` | Whether a model follows a prompt injection instead of the benign task |
+| `scapegoat_false_premise` | Whether a model accepts a false claim that it previously leaked a secret |
+| `channel_factorial` | Whether the same exfiltration demand behaves differently across message carriers |
+| `policy_supersession` | Whether a model correctly follows a newer policy amendment over older text |
+| `crypto_commitment_trap` | Whether a model handles an impossible/awkward hashing instruction without leaking |
+| `meta_evaluator_lie` | Whether a model follows a fake autograder over basic truth |
+| `compression_caveat` | Whether a model preserves correctness under a strict word budget |
+
+For a plain-language explanation of each suite, see `TESTS_EXPLAINED.md`.
+
+---
+
+## Installation
+
+CCD-Bench is a Python research codebase.
 
 ```bash
+git clone https://github.com/neuripssub/ccd-bench.git
+cd ccd-bench
+
+python -m venv .venv
+source .venv/bin/activate
+
+python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
-```
-
----
-
-## Main entry points
-
-| Component | Command / usage |
-|-----------|-----------------|
-| **Full multi-suite run** | `python multi_model_orchestrator.py --config models_to_test.yaml [--results-root ./results]` |
-| **Pipeline** (orchestrator ± contrastive activation mapping) | `python run_pipeline.py [--config models_to_test.yaml] [--skip-cam \| --cam-first]` |
-| **Paper tables / figures** | `python generate_paper_tables.py --help` |
-| **Judas cross-model figure / TeX** | `python judas_figure_emit.py` |
-| **Replayability audit** | `python audit_replayability.py` |
-| **Dashboard** | `streamlit run dashboard.py` |
-| **Sandbox API** (optional) | `docker compose up -d` then point `SANDBOX_URL` at the service (default `http://127.0.0.1:8765`). |
-
-Models and backends are listed in **`models_to_test.yaml`** (`hf` vs `vllm`, optional `vllm_base`).
-
----
-
-## Results layout
-
-Runs write JSON (and optional activation dumps) under:
-
-`results/<safe_model_dirname>/<UTC_timestamp>/*.json`
-
-Optional directory for **rsync’d or mirrored** cluster outputs:
-
-`results/cluster_sync/`
-
-Additional roots are merged when **`RESULTS_EXTRA_DIRS`** (path-separated) or CLI flags on aggregation scripts point to more directories.
-
----
-
-## Cluster deploy (optional)
-
-`deploy_to_cluster.sh` rsyncs the tree and regenerates `job.slurm`. The generated job runs **`multi_model_orchestrator.py`** from the project root. Submit with Slurm on your cluster after adjusting `#SBATCH` lines via environment variables documented in the script header.
-
----
-
-## Control flow and “loops”
-
-- **Orchestration** uses a bounded process pool and sequential suite calls; there are **no intentional infinite loops** in the benchmark driver.
-- The Streamlit dashboard drains subprocess log queues with **`queue.get_nowait()` until `queue.Empty`** — standard bounded draining, not a busy wait.
-
----
-
-## Scope vs. paper claims
-
-If the paper is primarily **analytical / empirical / methodological** without a mandatory reusable executable artifact, code release may still be **optional** under NeurIPS guidance — but providing this repository **supports transparency and reproducibility**. If the contribution **is** the benchmark or framework, release is **required**; this README is meant to satisfy the **documentation** expectation.
-
----
-
-## Citation
-
-After deanonymization / camera-ready, add the citation text your venue requires; until then, omit identifying metadata from this README in the anonymous tarball or repo.
